@@ -1,13 +1,6 @@
 import graphviz as gv
 
 
-class Edge:
-    def __init__(self, s, t, v):
-        self.start = s
-        self.end = t
-        self.value = v
-
-
 class RegexDFA:
     _reg = ""
     _value = []
@@ -50,7 +43,7 @@ class RegexDFA:
                 self._value.append(('*', v))
                 judge_concat()
             elif ch == '|':
-                while _op[-1] == '.':
+                while len(_op) != 0 and _op[-1] == '.':
                     v1 = self._value.pop()
                     v2 = self._value.pop()
                     self._value.append((_op.pop(), v2, v1))
@@ -74,6 +67,8 @@ class RegexDFA:
             v2 = self._value.pop()
             self._value.append((_op.pop(), v2, v1))
         self._value = self._value[0]
+        if RegexDFA.EPSILON in self._value_set:
+            self._value_set.remove(RegexDFA.EPSILON)
 
     def print_regex(self):
         print(self._reg)
@@ -91,10 +86,10 @@ class RegexDFA:
         v = str(v)
         e = self._edge_dict.get((s, t))
         if e is None:
-            self._edges.append(Edge(s, t, v))
+            self._edges.append([s, t, v])
             self._edge_dict[(s, t)] = len(self._edges) - 1
         else:
-            self._edges[e].value += "," + v
+            self._edges[e][2] += "," + v
         eg = self._edge_go.get((s, v))
         if eg is None:
             self._edge_go[(s, v)] = [t]
@@ -103,6 +98,8 @@ class RegexDFA:
 
     def _generate_nfa(self, v, s, t=None):
         if v[0] == 'v':
+            if t is None and v[1] == RegexDFA.EPSILON:
+                return s, s
             if t is None:
                 t = self._new_node()
             self._new_edge(s, t, v[1])
@@ -135,8 +132,7 @@ class RegexDFA:
     def print_nfa_edges(self):
         if not self._has_nfa:
             self.generate_nfa()
-        for e in self._edges:
-            print(e.start, e.end, e.value)
+        print(self._edges)
 
     def draw_nfa(self, filename="nfa"):
         if not self._has_nfa:
@@ -149,14 +145,14 @@ class RegexDFA:
                 g.node(str(i), peripheries="2", color="red")
             else:
                 g.node(str(i))
-        for e in self._edges:
-            g.edge(e.start, e.end, label=e.value)
+        for s, t, v in self._edges:
+            g.edge(s, t, label=v)
         g.render(filename)
 
     def _e_closure(self, i):
         if i is None:
             return []
-        return [i] + self._edge_go.get((i, RegexDFA.EPSILON), [])
+        return {i}.union(self._edge_go.get((i, RegexDFA.EPSILON), []))
 
     def _move(self, i, k):
         return self._edge_go.get((i, k), [])
@@ -169,17 +165,18 @@ class RegexDFA:
             self.generate_nfa()
         e = []
         DT = []
-        T = [self._e_closure(1)]
+        T = [self._e_closure('1')]
         while len(T) > 0:
             t = T.pop()
             DT.append(t)
             for k in self._value_set:
                 U = set()
-                for i in str(t):
+                for i in t:
+                    i = str(i)
                     for d in self._move(i, k):
-                        if d == str(self._end):
-                            U.add('T')
                         U = U.union(set(self._e_closure(d)))
+                    if str(self._end) in U:
+                        U.add('T')
                 if len(U) == 0:
                     continue
                 e.append((t, U, k))
@@ -212,6 +209,23 @@ class RegexDFA:
         g.render(filename)
 
 if __name__ == '__main__':
+    # unsigned number
+    dfa = RegexDFA('(dd*|dd*.dd*|.dd*)(' + RegexDFA.EPSILON +
+                   '|10(s|' + RegexDFA.EPSILON
+                   + ')dd*)|10(s|' + RegexDFA.EPSILON + ')dd*')
+    print("regex:")
+    dfa.print_regex()
+    print("tree:")
+    dfa.print_value()
+    print("NFA Edges:")
+    dfa.print_nfa_edges()
+    dfa.draw_nfa('unsigned_nfa')
+    print("DFA Edges:")
+    dfa.print_dfa_edges()
+    dfa.draw_dfa('unsigned_dfa')
+
+    print(" --- ")
+
     dfa = RegexDFA('1(1010*|1(010)*1)*0')
     print("regex:")
     dfa.print_regex()
