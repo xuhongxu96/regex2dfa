@@ -4,15 +4,54 @@ DFA Generator From Simple Regular Expression (including '*' '|' '(' ')')
 ## Examples
 
 The example code is in the main python file.
-Following is the output.
+
+### Eg.1
 
 ```
+regex:
 1(1010*|1(010)*1)*0
+tree:
 ('.', ('v', '1'), ('.', ('*', ('|', ('.', ('v', '1'), ('.', ('v', '0'), ('.', ('v', '1'), ('*', ('v', '0'))))), ('.', ('v', '1'), ('.', ('*', ('.', ('v', '0'), ('.', ('v', '1'), ('v', '0')))), ('v', '1'))))), ('v', '0')))
-----
-1(0|1)*101
-('.', ('v', '1'), ('.', ('*', ('|', ('v', '0'), ('v', '1'))), ('.', ('v', '1'), ('.', ('v', '0'), ('v', '1')))))
+NFA Edges:
+1 2 1
+2 3 1
+3 4 0
+4 5 1
+5 5 0
+5 2 ε
+2 6 1
+6 7 0
+7 8 1
+8 6 0
+6 2 1
+2 9 0
+DFA Edges:
+[('1', '2', '1'), ('2', '4', '1'), ('2', '3', '0'), ('4', '2', '1'), ('4', '5', '0'), ('5', '6', '1'), ('6', '4', '1'), ('6', '7', '0'), ('7', '15', '1'), ('7', '8', '0'), ('8', '10', '1'), ('8', '9', '0'), ('9', '4', '1'), ('9', '9', '0'), ('10', '2', '1'), ('10', '11', '0'), ('11', '6', '1'), ('11', '12', '0'), ('12', '13', '1'), ('13', '14', '0'), ('14', '2', '1'), ('14', '12', '0'), ('15', '15', '1'), ('15', '16', '0'), ('16', '6', '1')]
 ```
 
-![img1](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/img1.png)
-![img2](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/img2.png)
+#### NFA 1
+![nfa1](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/nfa1.png)
+#### DFA 1
+![dfa1](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/dfa1.png)
+
+### Eg.2
+
+```
+regex:
+1(0|1)*101
+tree:
+('.', ('v', '1'), ('.', ('*', ('|', ('v', '0'), ('v', '1'))), ('.', ('v', '1'), ('.', ('v', '0'), ('v', '1')))))
+NFA Edges:
+1 2 1
+2 2 0,1
+2 3 1
+3 4 0
+4 5 1
+DFA Edges:
+[('1', '2', '1'), ('2', '3', '1'), ('2', '2', '0'), ('3', '3', '1'), ('3', '4', '0'), ('4', '5', '1'), ('4', '2', '0'), ('5', '3', '1'), ('5', '4', '0')]
+```
+
+#### NFA 2
+![nfa2](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/nfa2.png)
+#### DFA 2
+![dfa2](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/dfa2.png)
