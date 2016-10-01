@@ -79,5 +79,5 @@ DFA Edges:
 ![nfa3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/unsigned_nfa.png)
 #### DFA 3
 ![dfa3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/unsigned_dfa.png)
-### Mini DFA 3
+#### Mini DFA 3
 ![mini3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/mini_unsigned_dfa.png)
