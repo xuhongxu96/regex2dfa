@@ -1,9 +1,13 @@
 # regex2dfa
 DFA Generator for Simple Regular Expression (including '*' '|' '(' ')')
 
-## Examples
+## Features
 
-The example code is in the main python file.
+- Regex -> NFA
+- NFA -> DFA
+- DFA Minimization (**New**)
+
+## Examples
 
 ### Eg.1
 
@@ -75,3 +79,5 @@ DFA Edges:
 ![nfa3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/unsigned_nfa.png)
 #### DFA 3
 ![dfa3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/unsigned_dfa.png)
+### Mini DFA 3
+![mini3](https://raw.githubusercontent.com/xuhongxu96/regex2dfa/master/mini_unsigned_dfa.png)

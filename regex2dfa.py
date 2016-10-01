@@ -1,5 +1,69 @@
 import graphviz as gv
 
+"""UnionFind.py
+
+Union-find data structure. Based on Josiah Carlson's code,
+http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/215912
+with significant additional changes by D. Eppstein.
+"""
+
+
+class UnionFind:
+    """Union-find data structure.
+
+    Each unionFind instance X maintains a family of disjoint sets of
+    hashable objects, supporting the following two methods:
+
+    - X[item] returns a name for the set containing the given item.
+      Each set is named by an arbitrarily-chosen one of its members; as
+      long as the set remains unchanged it will keep the same name. If
+      the item is not yet part of a set in X, a new singleton set is
+      created for it.
+
+    - X.union(item1, item2, ...) merges the sets containing each item
+      into a single larger set.  If any item is not yet part of a set
+      in X, it is added to X as one of the members of the merged set.
+    """
+
+    def __init__(self):
+        """Create a new empty union-find structure."""
+        self.weights = {}
+        self.parents = {}
+
+    def __getitem__(self, object):
+        """Find and return the name of the set containing the object."""
+
+        # check for previously unknown object
+        if object not in self.parents:
+            self.parents[object] = object
+            self.weights[object] = 1
+            return object
+
+        # find path of objects leading to the root
+        path = [object]
+        root = self.parents[object]
+        while root != path[-1]:
+            path.append(root)
+            root = self.parents[root]
+
+        # compress the path and return
+        for ancestor in path:
+            self.parents[ancestor] = root
+        return root
+
+    def __iter__(self):
+        """Iterate through all items ever found or unioned by this structure."""
+        return iter(self.parents)
+
+    def union(self, *objects):
+        """Find the sets containing the objects and merge them all."""
+        roots = [self[x] for x in objects]
+        heaviest = max([(self.weights[r], r) for r in roots])[1]
+        for r in roots:
+            if r != heaviest:
+                self.weights[heaviest] += self.weights[r]
+                self.parents[r] = heaviest
+
 
 class RegexDFA:
     _reg = ""
@@ -14,6 +78,8 @@ class RegexDFA:
     _dfa = []
     _has_dfa = False
     _dfa_node = []
+    _dfa_end = set()
+    _dfa_go = {}
 
     EPSILON = '\u03B5'
 
@@ -30,6 +96,8 @@ class RegexDFA:
         self._dfa = []
         self._has_dfa = False
         self._dfa_node = []
+        self._dfa_end = set()
+        self._dfa_go = {}
         _op = []
 
         def judge_concat():
@@ -139,10 +207,10 @@ class RegexDFA:
             self.generate_nfa()
         g = gv.Digraph(format="pdf")
         for i in range(1, self._node + 1):
-            if i == 1:
-                g.node(str(i), color="blue")
-            elif i == self._end:
+            if i == self._end:
                 g.node(str(i), peripheries="2", color="red")
+            elif i == 1:
+                g.node(str(i), color="blue")
             else:
                 g.node(str(i))
         for s, t, v in self._edges:
@@ -161,10 +229,12 @@ class RegexDFA:
         self._has_dfa = False
         self._dfa_node = []
         self._dfa = []
+        self._dfa_go = {}
         if not self._has_nfa:
             self.generate_nfa()
         e = []
         DT = []
+        self._dfa_end = set()
         T = [self._e_closure('1')]
         while len(T) > 0:
             t = T.pop()
@@ -186,7 +256,83 @@ class RegexDFA:
             s = str(DT.index(s) + 1)
             t = str(DT.index(t) + 1)
             self._dfa.append((s, t, k))
+            self._dfa_go[(s, k)] = t
+        DT[0].add('S')
         self._dfa_node = DT
+        self._has_dfa = True
+
+    def minimize_dfa(self):
+        if not self._has_dfa:
+            self.generate_dfa()
+
+        ct = len(self._dfa_node)
+        T = set()
+        S = set()
+        for p in range(ct):
+            if 'T' in self._dfa_node[p]:
+                T.add(str(p + 1))
+            else:
+                S.add(str(p + 1))
+        table = {}
+        for i in range(1, ct + 1):
+            for j in range(1, i):
+                i = str(i)
+                j = str(j)
+                if (i in T and j in S) or (i in S and j in T):
+                    table[(i, j)] = 1
+                else:
+                    table[(i, j)] = 0
+        changed = True
+        while changed:
+            changed = False
+            for k in table:
+                for a in self._value_set:
+                    i = self._dfa_go.get((str(k[0]), a))
+                    j = self._dfa_go.get((str(k[1]), a))
+                    if i is None and j is None:
+                        continue
+                    elif i is None or j is None:
+                        if table[k] == 0:
+                            table[k] = 1
+                            changed = True
+                        continue
+                    if i == j: continue
+                    if int(i) < int(j):
+                        i, j = j, i
+                    if table[k] == 0 and table[(i, j)] == 1:
+                        table[k] = 1
+                        changed = True
+        N = [-1 for i in range(0, ct)]
+        DT = {}
+
+        uf = UnionFind()
+        for k, v in table.items():
+            if v == 0:
+                uf.union(k[0], k[1])
+        for i in range(1, ct + 1):
+            if DT.get(uf[str(i)]) is None:
+                DT[uf[str(i)]] = {i}
+            else:
+                DT[uf[str(i)]].add(i)
+        DNode = []
+        DFA = []
+        for k, v in DT.items():
+            DNode.append(v)
+        for i in range(len(DNode)):
+            for a in self._value_set:
+                gi = self._dfa_go.get((str(list(DNode[i])[0]), a))
+                if gi is not None:
+                    gi = DNode.index(DT[uf[gi]])
+                    DFA.append((str(i + 1), str(gi + 1), a))
+
+        for n in DNode:
+            if 1 in n:
+                n.add('S')
+            if str(list(n)[0]) in T:
+                n.add('T')
+
+        self._dfa_node = DNode
+        self._dfa = DFA
 
     def print_dfa_edges(self):
         if not self._has_dfa:
@@ -198,10 +344,10 @@ class RegexDFA:
             self.generate_dfa()
         g = gv.Digraph(format="pdf")
         for i in range(1, len(self._dfa_node) + 1):
-            if i == 1:
-                g.node(str(i), color="blue")
-            elif 'T' in self._dfa_node[i - 1]:
+            if 'T' in self._dfa_node[i - 1]:
                 g.node(str(i), peripheries="2", color="red")
+            elif 'S' in self._dfa_node[i - 1]:
+                g.node(str(i), color="blue")
             else:
                 g.node(str(i))
         for s, t, k in self._dfa:
@@ -213,41 +359,5 @@ if __name__ == '__main__':
     dfa = RegexDFA('(dd*|dd*.dd*|.dd*)(' + RegexDFA.EPSILON +
                    '|10(s|' + RegexDFA.EPSILON
                    + ')dd*)|10(s|' + RegexDFA.EPSILON + ')dd*')
-    print("regex:")
-    dfa.print_regex()
-    print("tree:")
-    dfa.print_value()
-    print("NFA Edges:")
-    dfa.print_nfa_edges()
-    dfa.draw_nfa('unsigned_nfa')
-    print("DFA Edges:")
-    dfa.print_dfa_edges()
-    dfa.draw_dfa('unsigned_dfa')
-
-    print(" --- ")
-
-    dfa = RegexDFA('1(1010*|1(010)*1)*0')
-    print("regex:")
-    dfa.print_regex()
-    print("tree:")
-    dfa.print_value()
-    print("NFA Edges:")
-    dfa.print_nfa_edges()
-    dfa.draw_nfa('nfa1')
-    print("DFA Edges:")
-    dfa.print_dfa_edges()
-    dfa.draw_dfa('dfa1')
-
-    print(" --- ")
-
-    dfa = RegexDFA('1(0|1)*101')
-    print("regex:")
-    dfa.print_regex()
-    print("tree:")
-    dfa.print_value()
-    print("NFA Edges:")
-    dfa.print_nfa_edges()
-    dfa.draw_nfa('nfa2')
-    print("DFA Edges:")
-    dfa.print_dfa_edges()
-    dfa.draw_dfa('dfa2')
+    dfa.minimize_dfa()
+    dfa.draw_dfa()
